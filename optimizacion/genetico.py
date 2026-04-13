@@ -46,6 +46,8 @@ class AlgoritmoGenetico:
 
     def ejecutar(self, evaluar_fitness: Callable[[Tuple[float, ...]], float], generaciones: int):
         mejores_por_gen = []
+        historial = {'mejor_fitness': [], 'prom_fitness': []}
+        
         for gen in range(generaciones):
             # Evaluar población en paralelo para agilizar
             with ThreadPoolExecutor() as executor:
@@ -53,10 +55,12 @@ class AlgoritmoGenetico:
             
             mejor_fitness = max(fitnesses)
             mejor_individuo = self.poblacion[fitnesses.index(mejor_fitness)]
-            # prom_fitness = sum(fitnesses) / self.tam_poblacion
+            prom_fitness = sum(fitnesses) / self.tam_poblacion
             
-            print(f"Generación {gen+1}/{generaciones} | Mejor Fitness: {mejor_fitness:.3f}")
+            print(f"Generación {gen+1}/{generaciones} | Mejor: {mejor_fitness:.3f} | Promedio: {prom_fitness:.3f}")
             mejores_por_gen.append((mejor_individuo, mejor_fitness))
+            historial['mejor_fitness'].append(mejor_fitness)
+            historial['prom_fitness'].append(prom_fitness)
             
             # Elitismo: guardamos al mejor
             nueva_poblacion = [mejor_individuo]
@@ -72,5 +76,6 @@ class AlgoritmoGenetico:
                     nueva_poblacion.append(h2)
                     
             self.poblacion = nueva_poblacion
-            
-        return max(mejores_por_gen, key=lambda x: x[1])
+        
+        mejor = max(mejores_por_gen, key=lambda x: x[1])
+        return mejor[0], mejor[1], historial
