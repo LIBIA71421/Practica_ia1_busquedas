@@ -471,8 +471,12 @@ class OthelloUI:
 #  TICTACTOE 3D UI
 # ════════════════════════════════════════════════════════════════════════════
 class TicTacToe3DUI:
-    CELL = 72
-    GAP  = 18   # Espacio entre capas
+    # Parámetros para proyección isométrica pseudo-3D
+    TILE_W = 86
+    TILE_H = 43
+    LAYER_H = 95
+    OX = 420  # Offset horizontal (centro del cubo)
+    OY = 480  # Offset vertical (base del cubo)
 
     def __init__(self, parent):
         self.parent = parent
@@ -576,8 +580,8 @@ class TicTacToe3DUI:
         self.canvas_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         # Calcular tamaño del canvas
-        cw = self.CELL * 4 * 4 + self.GAP * 3 + 20
-        ch = self.CELL * 4 + 70
+        cw = 740
+        ch = 640
 
         canvas_wrap = tk.Frame(self.canvas_frame, bg=BORDER, padx=2, pady=2)
         canvas_wrap.pack()
@@ -640,44 +644,36 @@ class TicTacToe3DUI:
     def _pos_to_coords(self, pos):
         z = pos // 16
         rem = pos % 16
-        y = rem // 4
-        x = rem % 4
-        return z, y, x
+        row = rem // 4
+        col = rem % 4
+        return z, row, col
 
     def _coords_to_canvas(self, z, row, col):
-        """Convierte coordenadas 3D a posición en canvas."""
-        CELL = self.CELL
-        GAP = self.GAP
-        offset_x = z * (CELL * 4 + GAP) + 10
-        offset_y = 50
-        cx = offset_x + col * CELL
-        cy = offset_y + row * CELL
+        """Convierte coordenadas lógicas 3D a posición isométrica en el canvas."""
+        cx = self.OX + (col - row) * (self.TILE_W / 2)
+        cy = self.OY + (col + row) * (self.TILE_H / 2) - z * self.LAYER_H
         return cx, cy
 
-    def _canvas_to_pos(self, x, y):
-        """Convierte posición canvas a índice del tablero (o None)."""
-        CELL = self.CELL
-        GAP = self.GAP
-        for z in range(4):
-            ox = z * (CELL * 4 + GAP) + 10
-            oy = 50
-            if ox <= x < ox + CELL * 4 and oy <= y < oy + CELL * 4:
-                col = (x - ox) // CELL
-                row = (y - oy) // CELL
-                return row * 4 + z * 16 + col
+    def _canvas_to_cell(self, x, y):
+        """Detecta sobre qué celda se hizo clic (en 3D) iterando desde la vista frontal/superior."""
+        # Iterar en orden inverso de dibujado (desde frente-arriba hacia atrás-abajo)
+        for z in range(3, -1, -1):
+            for row in range(3, -1, -1):
+                for col in range(3, -1, -1):
+                    cx, cy = self._coords_to_canvas(z, row, col)
+                    # Comprobación de punto dentro del rombo isométrico
+                    dx = abs(x - cx)
+                    dy = abs(y - cy)
+                    if dx / (self.TILE_W / 2) + dy / (self.TILE_H / 2) <= 1.0:
+                        return (z, row, col)
         return None
 
-    def _canvas_to_cell(self, x, y):
-        """Devuelve (z, row, col) o None."""
-        CELL = self.CELL
-        GAP = self.GAP
-        for z in range(4):
-            ox = z * (CELL * 4 + GAP) + 10
-            oy = 50
-            if ox <= x < ox + CELL * 4 and oy <= y < oy + CELL * 4:
-                col = (x - ox) // CELL
-                row = (y - oy) // CELL
-                return (z, row, col)
+    def _canvas_to_pos(self, x, y):
+        """Convierte posición canvas a índice 1D del tablero (o None)."""
+        cell = self._canvas_to_cell(x, y)
+        if cell:
+            z, row, col = cell
+            return row * 4 + z * 16 + col
         return None
 
     def _on_click(self, event):
@@ -747,97 +743,98 @@ class TicTacToe3DUI:
     def _dibujar_tablero(self):
         self.canvas.delete("all")
         tablero, turn = self.estado
-        CELL = self.CELL
 
         jugadas = set()
         if not self.juego.es_terminal(self.estado) and turn == self.jugador_humano:
             jugadas = set(self.juego.jugadas_legales(self.estado))
 
-        # Colores por capa (gradiente sutil)
-        layer_colors = ["#181e30", "#1a2035", "#1c223a", "#1e2540"]
-        layer_labels = ["Z=0  (Base)", "Z=1", "Z=2", "Z=3  (Tope)"]
-
+        # 1. Dibujar pilares estructurales (efecto cubo de cristal)
+        # Esquinas: Atrás, Frente, Izquierda, Derecha
+        corners = [(0,0), (3,3), (3,0), (0,3)]
+        for r, c in corners:
+            xb, yb = self._coords_to_canvas(0, r, c)
+            xt, yt = self._coords_to_canvas(3, r, c)
+            self.canvas.create_line(xb, yb, xt, yt, fill="#2a3050", width=1.5, dash=(4, 4))
+            
+        # 2. Dibujar capas de abajo hacia arriba (z), luego de atrás hacia adelante (row, col)
         for z in range(4):
-            ox, oy = self._coords_to_canvas(z, 0, 0)
-
-            # Título de capa
-            self.canvas.create_text(
-                ox + CELL * 2, oy - 22,
-                text=layer_labels[z],
-                font=("Segoe UI", 9, "bold"),
-                fill=ACCENT if z == 0 else TEXT_SECONDARY
-            )
+            # Etiqueta flotante por capa a la izquierda de la estructura
+            xl, yl = self._coords_to_canvas(z, 3, -1)
+            self.canvas.create_text(xl - 20, yl + 25, text=f"Z={z}", 
+                                    font=("Segoe UI", 11, "bold"), fill=TEXT_SECONDARY)
 
             for row in range(4):
                 for col in range(4):
-                    x1 = ox + col * CELL
-                    y1 = oy + row * CELL
-                    x2 = x1 + CELL
-                    y2 = y1 + CELL
                     pos = row * 4 + z * 16 + col
+                    cx, cy = self._coords_to_canvas(z, row, col)
 
-                    is_hover = self.hover_cell == (z, row, col)
-                    is_valid = pos in jugadas
+                    tw = self.TILE_W / 2
+                    th = self.TILE_H / 2
+                    
+                    # Geometría del rombo isométrico
+                    pts = [
+                        cx, cy - th,  # Arriba
+                        cx + tw, cy,  # Derecha
+                        cx, cy + th,  # Abajo
+                        cx - tw, cy   # Izquierda
+                    ]
 
-                    # Fondo de celda
+                    is_hover = (self.hover_cell == (z, row, col))
+                    is_valid = (pos in jugadas)
+
+                    # Colores "glassmorphism"
                     if is_hover and is_valid:
-                        bg = "#2a3460"
+                        fill_col = "#2a3460"
+                        outline_col = "#43e97b"
                     elif is_hover:
-                        bg = "#232842"
+                        fill_col = "#232842"
+                        outline_col = "#ff6584"
                     elif is_valid:
-                        bg = "#1e2c40"
+                        fill_col = "#1e2c40"
+                        outline_col = "#2d3255"
                     else:
-                        bg = layer_colors[z]
+                        fill_col = "#111522" if (row+col)%2==0 else "#161b2a"
+                        outline_col = "#202538"
 
-                    self.canvas.create_rectangle(x1, y1, x2, y2,
-                        fill=bg, outline=BORDER, width=1)
+                    # Dibujar rombo
+                    self.canvas.create_polygon(pts, fill=fill_col, outline=outline_col, width=1.5)
 
-                    # Movimiento válido: punto verde sutil
-                    if is_valid:
-                        cx, cy = x1 + CELL // 2, y1 + CELL // 2
-                        self.canvas.create_oval(cx - 5, cy - 5, cx + 5, cy + 5,
-                            fill="#43e97b", outline="", stipple="gray50")
+                    # Simular indicador de jugada válida
+                    if is_valid and not is_hover:
+                        self.canvas.create_oval(cx-3, cy-3, cx+3, cy+3, fill="#328a4c", outline="")
 
+                    # Dibujar fichas
                     val = tablero[pos]
                     if val == 1:
-                        self._draw_x(x1, y1, CELL)
+                        self._draw_x(cx, cy)
                     elif val == -1:
-                        self._draw_o(x1, y1, CELL)
+                        self._draw_o(cx, cy)
 
-            # Borde de capa
-            self.canvas.create_rectangle(
-                ox, oy, ox + CELL * 4, oy + CELL * 4,
-                outline=ACCENT if z == 0 else BORDER, width=2, fill=""
-            )
+    def _draw_x(self, cx, cy):
+        dw = self.TILE_W / 4.2
+        dh = self.TILE_H / 4.2
+        # Líneas paralelas a los ejes de la cuadrícula
+        x1, y1 = cx - dw, cy - dh
+        x2, y2 = cx + dw, cy + dh
+        
+        x3, y3 = cx + dw, cy - dh
+        x4, y4 = cx - dw, cy + dh
 
-    def _draw_x(self, x1, y1, cell):
-        pad = 14
-        x2, y2 = x1 + cell, y1 + cell
-        # Sombra
-        self.canvas.create_line(x1+pad+2, y1+pad+2, x2-pad+2, y2-pad+2,
-            fill="#200000", width=4, capstyle="round")
-        self.canvas.create_line(x2-pad+2, y1+pad+2, x1+pad+2, y2-pad+2,
-            fill="#200000", width=4, capstyle="round")
-        # X
-        self.canvas.create_line(x1+pad, y1+pad, x2-pad, y2-pad,
-            fill="#ff6b6b", width=4, capstyle="round")
-        self.canvas.create_line(x2-pad, y1+pad, x1+pad, y2-pad,
-            fill="#ff6b6b", width=4, capstyle="round")
+        # Volúmen (Shadow 3D)
+        self.canvas.create_line(x1+2, y1+2, x2+2, y2+2, fill="#200000", width=4, capstyle="round")
+        self.canvas.create_line(x3+2, y3+2, x4+2, y4+2, fill="#200000", width=4, capstyle="round")
+        
+        # Color Principal de la X
+        self.canvas.create_line(x1, y1, x2, y2, fill="#ff6b6b", width=3, capstyle="round")
+        self.canvas.create_line(x3, y3, x4, y4, fill="#ff6b6b", width=3, capstyle="round")
 
-    def _draw_o(self, x1, y1, cell):
-        pad = 12
-        cx = x1 + cell // 2
-        cy = y1 + cell // 2
-        r = cell // 2 - pad
-        # Sombra
-        self.canvas.create_oval(cx - r + 2, cy - r + 2, cx + r + 2, cy + r + 2,
-            outline="#001a33", width=5)
-        # O
-        self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-            outline="#6bc5ff", width=4, fill="")
-        # Brillo interno
-        self.canvas.create_oval(cx - r + 6, cy - r + 6, cx - r//2, cy - r//2,
-            outline="#aaddff", width=1, fill="")
+    def _draw_o(self, cx, cy):
+        dw = self.TILE_W / 3.2
+        dh = self.TILE_H / 3.2
+        # Volúmen (Shadow 3D)
+        self.canvas.create_oval(cx - dw + 2, cy - dh + 2, cx + dw + 2, cy + dh + 2, outline="#001a33", width=4)
+        # O principal
+        self.canvas.create_oval(cx - dw, cy - dh, cx + dw, cy + dh, outline="#6bc5ff", width=3)
 
 
 # ─── Punto de entrada ────────────────────────────────────────────────────────
