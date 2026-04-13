@@ -39,8 +39,8 @@ COL_IA      = "#6c63ff"     # IA highlight
 VALID_COL   = "#43e97b"     # Movimiento válido
 
 # ─── Pesos por defecto ───────────────────────────────────────────────────────
-PESOS_OTHELLO_DEFAULT = (1.5, 2.0, 3.5, 0.5)
-PESOS_TTT3D_DEFAULT   = (0.5, 2.0, 5.0, 1.0)
+PESOS_OTHELLO_DEFAULT = (0.40401033647179574, 0.9562255176191674,-0.5810995767711737,-0.5608392529830415)
+PESOS_TTT3D_DEFAULT   = (0.7533482793088735,-0.7018771573432969, 0.8615901366527485, 0.8437413291129652)
 
 
 class App(tk.Tk):
