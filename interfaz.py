@@ -185,34 +185,34 @@ class OthelloUI:
         side.pack(side="left", fill="y", padx=(0, 2))
 
         section_label(side, "⚙  Configuración")
-        tk.Label(side, text="Profundidad IA:", font=("Segoe UI", 10),
-                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack(anchor="w", padx=14)
+        tk.Label(side, text="🔍 Profundidad IA:", font=("Segoe UI", 10, "bold"),
+                 bg=BG_PANEL, fg=TEXT_PRIMARY).pack(anchor="w", padx=14)
 
-        depth_frame = tk.Frame(side, bg=BG_PANEL)
-        depth_frame.pack(fill="x", padx=14, pady=4)
-        for d in [1, 2, 3, 4, 5]:
-            rb = tk.Radiobutton(
-                depth_frame, text=str(d), variable=self.profundidad, value=d,
-                bg=BG_PANEL, fg=TEXT_SECONDARY, selectcolor=ACCENT,
-                activebackground=BG_PANEL, activeforeground=TEXT_PRIMARY,
-                font=("Segoe UI", 10), cursor="hand2"
-            )
-            rb.pack(side="left")
+        self.depth_scale = tk.Scale(
+            side, variable=self.profundidad, from_=1, to=6, orient="horizontal",
+            bg=BG_PANEL, fg=TEXT_PRIMARY, troughcolor=BG_CARD,
+            highlightthickness=0, font=("Segoe UI", 10), length=200,
+            activebackground=ACCENT, sliderrelief="flat", bd=0,
+            tickinterval=1
+        )
+        self.depth_scale.pack(fill="x", padx=14, pady=4)
 
-        tk.Label(side, text="Jugar como:", font=("Segoe UI", 10),
-                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack(anchor="w", padx=14, pady=(8, 2))
+        tk.Label(side, text="🎨 Jugar como:", font=("Segoe UI", 10, "bold"),
+                 bg=BG_PANEL, fg=TEXT_PRIMARY).pack(anchor="w", padx=14, pady=(8, 2))
 
         self.lado_var = tk.StringVar(value="negro")
         side_frame = tk.Frame(side, bg=BG_PANEL)
-        side_frame.pack(fill="x", padx=14)
+        side_frame.pack(fill="x", padx=14, pady=4)
         for txt, val in [("⚫ Negras", "negro"), ("⚪ Blancas", "blanco")]:
             rb = tk.Radiobutton(
                 side_frame, text=txt, variable=self.lado_var, value=val,
-                bg=BG_PANEL, fg=TEXT_SECONDARY, selectcolor=ACCENT,
-                activebackground=BG_PANEL, activeforeground=TEXT_PRIMARY,
-                font=("Segoe UI", 10), cursor="hand2"
+                bg=BG_CARD, fg=TEXT_SECONDARY, selectcolor=ACCENT,
+                activebackground=ACCENT, activeforeground=TEXT_PRIMARY,
+                font=("Segoe UI", 11, "bold"), cursor="hand2",
+                indicatoron=0, padx=12, pady=6, relief="flat",
+                bd=0, highlightthickness=0
             )
-            rb.pack(anchor="w")
+            rb.pack(side="left", expand=True, fill="x", padx=2)
 
         separator(side)
         action_button(side, "▶  Nueva Partida", self.nueva_partida, ACCENT)
@@ -495,34 +495,34 @@ class TicTacToe3DUI:
         side.pack(side="left", fill="y", padx=(0, 2))
 
         section_label(side, "⚙  Configuración")
-        tk.Label(side, text="Profundidad IA:", font=("Segoe UI", 10),
-                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack(anchor="w", padx=14)
+        tk.Label(side, text="🔍 Profundidad IA:", font=("Segoe UI", 10, "bold"),
+                 bg=BG_PANEL, fg=TEXT_PRIMARY).pack(anchor="w", padx=14)
 
-        depth_frame = tk.Frame(side, bg=BG_PANEL)
-        depth_frame.pack(fill="x", padx=14, pady=4)
-        for d in [1, 2, 3]:
-            rb = tk.Radiobutton(
-                depth_frame, text=str(d), variable=self.profundidad, value=d,
-                bg=BG_PANEL, fg=TEXT_SECONDARY, selectcolor=ACCENT,
-                activebackground=BG_PANEL, activeforeground=TEXT_PRIMARY,
-                font=("Segoe UI", 10), cursor="hand2"
-            )
-            rb.pack(side="left")
+        self.depth_scale = tk.Scale(
+            side, variable=self.profundidad, from_=1, to=4, orient="horizontal",
+            bg=BG_PANEL, fg=TEXT_PRIMARY, troughcolor=BG_CARD,
+            highlightthickness=0, font=("Segoe UI", 10), length=200,
+            activebackground=ACCENT, sliderrelief="flat", bd=0,
+            tickinterval=1
+        )
+        self.depth_scale.pack(fill="x", padx=14, pady=4)
 
-        tk.Label(side, text="Jugar como:", font=("Segoe UI", 10),
-                 bg=BG_PANEL, fg=TEXT_SECONDARY).pack(anchor="w", padx=14, pady=(8, 2))
+        tk.Label(side, text="🎨 Jugar como:", font=("Segoe UI", 10, "bold"),
+                 bg=BG_PANEL, fg=TEXT_PRIMARY).pack(anchor="w", padx=14, pady=(8, 2))
 
         self.lado_var = tk.StringVar(value="x")
         side_frame = tk.Frame(side, bg=BG_PANEL)
-        side_frame.pack(fill="x", padx=14)
-        for txt, val in [("❌ Jugador X (1)", "x"), ("⭕ Jugador O (-1)", "o")]:
+        side_frame.pack(fill="x", padx=14, pady=4)
+        for txt, val in [("❌ Jugador X", "x"), ("⭕ Jugador O", "o")]:
             rb = tk.Radiobutton(
                 side_frame, text=txt, variable=self.lado_var, value=val,
-                bg=BG_PANEL, fg=TEXT_SECONDARY, selectcolor=ACCENT,
-                activebackground=BG_PANEL, activeforeground=TEXT_PRIMARY,
-                font=("Segoe UI", 9), cursor="hand2"
+                bg=BG_CARD, fg=TEXT_SECONDARY, selectcolor=ACCENT,
+                activebackground=ACCENT, activeforeground=TEXT_PRIMARY,
+                font=("Segoe UI", 11, "bold"), cursor="hand2",
+                indicatoron=0, padx=12, pady=6, relief="flat",
+                bd=0, highlightthickness=0
             )
-            rb.pack(anchor="w")
+            rb.pack(side="left", expand=True, fill="x", padx=2)
 
         separator(side)
         action_button(side, "▶  Nueva Partida", self.nueva_partida, ACCENT)
