@@ -4,6 +4,7 @@ Othello & TicTacToe 3D (4x4x4) vs IA Minimax Alfa-Beta
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
+import math
 import threading
 import time
 import sys
@@ -471,12 +472,8 @@ class OthelloUI:
 #  TICTACTOE 3D UI
 # ════════════════════════════════════════════════════════════════════════════
 class TicTacToe3DUI:
-    # Parámetros para proyección isométrica pseudo-3D
-    TILE_W = 86
-    TILE_H = 43
-    LAYER_H = 95
-    OX = 420  # Offset horizontal (centro del cubo)
-    OY = 480  # Offset vertical (base del cubo)
+    OX = 370
+    OY = 480
 
     def __init__(self, parent):
         self.parent = parent
@@ -485,7 +482,13 @@ class TicTacToe3DUI:
         self.jugador_humano = 1
         self.profundidad = tk.IntVar(value=2)
         self.ia_thinking = False
-        self.hover_cell = None  # (capa, fila, col)
+        self.hover_cell = None
+        
+        self.yaw = math.pi / 4
+        self.pitch = 0.5
+        self.CELL_SIZE = 75
+        self.TILE_SIZE = 65
+        self.LAYER_GAP = 120
 
         self._build(parent)
         self.nueva_partida()
@@ -494,7 +497,6 @@ class TicTacToe3DUI:
         main = tk.Frame(parent, bg=BG_DARK)
         main.pack(fill="both", expand=True)
 
-        # Panel lateral
         side = make_side_panel(main)
         side.pack(side="left", fill="y", padx=(0, 2))
 
@@ -506,8 +508,7 @@ class TicTacToe3DUI:
             side, variable=self.profundidad, from_=1, to=4, orient="horizontal",
             bg=BG_PANEL, fg=TEXT_PRIMARY, troughcolor=BG_CARD,
             highlightthickness=0, font=("Segoe UI", 10), length=200,
-            activebackground=ACCENT, sliderrelief="flat", bd=0,
-            tickinterval=1
+            activebackground=ACCENT, sliderrelief="flat", bd=0, tickinterval=1
         )
         self.depth_scale.pack(fill="x", padx=14, pady=4)
 
@@ -517,14 +518,13 @@ class TicTacToe3DUI:
         self.lado_var = tk.StringVar(value="x")
         side_frame = tk.Frame(side, bg=BG_PANEL)
         side_frame.pack(fill="x", padx=14, pady=4)
-        for txt, val in [("❌ Jugador X", "x"), ("⭕ Jugador O", "o")]:
+        for txt, val in [("❌ X", "x"), ("⭕ O", "o")]:
             rb = tk.Radiobutton(
                 side_frame, text=txt, variable=self.lado_var, value=val,
                 bg=BG_CARD, fg=TEXT_SECONDARY, selectcolor=ACCENT,
                 activebackground=ACCENT, activeforeground=TEXT_PRIMARY,
                 font=("Segoe UI", 11, "bold"), cursor="hand2",
-                indicatoron=0, padx=12, pady=6, relief="flat",
-                bd=0, highlightthickness=0
+                indicatoron=0, padx=12, pady=6, relief="flat", bd=0, highlightthickness=0
             )
             rb.pack(side="left", expand=True, fill="x", padx=2)
 
@@ -548,52 +548,28 @@ class TicTacToe3DUI:
         info_label(side, self.lbl_nodos_var, fg=TEXT_SECONDARY)
         info_label(side, self.lbl_podas_var, fg=TEXT_SECONDARY)
 
-        separator(side)
-        section_label(side, "ℹ  Capas del tablero")
-        for i in range(4):
-            tk.Label(side, text=f"  Capa Z={i}  →  Posiciones {i*16} a {i*16+15}",
-                     font=("Segoe UI", 8), bg=BG_PANEL, fg=TEXT_SECONDARY).pack(anchor="w", padx=14)
-
-        separator(side)
-        section_label(side, "📖  Leyenda")
-        items = [("❌", "Jugador X (1)", "#ff6b6b"), ("⭕", "Jugador O (-1)", "#6bc5ff")]
-        for icon, text, col in items:
-            row = tk.Frame(side, bg=BG_PANEL)
-            row.pack(anchor="w", padx=14, pady=1)
-            tk.Label(row, text=icon, font=("Segoe UI", 10), bg=BG_PANEL).pack(side="left")
-            tk.Label(row, text=text, font=("Segoe UI", 9), bg=BG_PANEL, fg=col).pack(side="left", padx=4)
-
-        # Área del tablero
         board_area = tk.Frame(main, bg=BG_DARK)
         board_area.pack(side="left", fill="both", expand=True)
 
-        tk.Label(board_area, text="TicTacToe 3D — 4×4×4",
-                 font=("Segoe UI", 14, "bold"), bg=BG_DARK, fg=TEXT_PRIMARY).pack(pady=(10, 4))
-
-        sub = tk.Label(board_area,
-            text="Haz clic en una celda vacía para colocar tu ficha. ¡Forma una línea de 4 en cualquier dirección!",
+        tk.Label(board_area, text="TicTacToe 3D — 4×4×4", font=("Segoe UI", 14, "bold"), bg=BG_DARK, fg=TEXT_PRIMARY).pack(pady=(10, 4))
+        sub = tk.Label(board_area, text="Arrastra para rotar la cámara. Clic = jugar. ¡Forma una línea de 4!",
             font=("Segoe UI", 9), bg=BG_DARK, fg=TEXT_SECONDARY, wraplength=620)
         sub.pack(pady=(0, 10))
 
-        # Canvas con scroll si es necesario
         self.canvas_frame = tk.Frame(board_area, bg=BG_DARK)
         self.canvas_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # Calcular tamaño del canvas
-        cw = 740
-        ch = 640
 
         canvas_wrap = tk.Frame(self.canvas_frame, bg=BORDER, padx=2, pady=2)
         canvas_wrap.pack()
 
-        self.canvas = tk.Canvas(canvas_wrap, width=cw, height=ch,
-                                bg=BG_CARD, highlightthickness=0, cursor="hand2")
+        self.canvas = tk.Canvas(canvas_wrap, width=740, height=640, bg=BG_CARD, highlightthickness=0, cursor="hand2")
         self.canvas.pack()
-        self.canvas.bind("<Button-1>", self._on_click)
-        self.canvas.bind("<Motion>", self._on_hover)
-        self.canvas.bind("<Leave>", self._on_leave)
 
-    # ── Lógica de juego ────────────────────────────────────────────────────
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<Motion>", self._on_mouse_move)
+
     def nueva_partida(self):
         self.ia_thinking = False
         self.jugador_humano = 1 if self.lado_var.get() == "x" else -1
@@ -603,24 +579,19 @@ class TicTacToe3DUI:
         self.lbl_podas_var.set("")
         self._actualizar_ui()
 
-        if self.juego.jugador_actual(self.estado) != self.jugador_humano:
+        if self.estado[1] != self.jugador_humano:
             self.parent.after(400, self._turno_ia)
 
     def _get_ia(self):
         pesos = PESOS_TTT3D_DEFAULT
         evaluador = get_evaluador_ttt3d(pesos)
-        return AgenteMinimaxAlfaBeta(
-            profundidad_maxima=self.profundidad.get(),
-            evaluador=evaluador
-        )
+        return AgenteMinimaxAlfaBeta(profundidad_maxima=self.profundidad.get(), evaluador=evaluador)
 
     def forzar_ia(self):
         if not self.ia_thinking and self.estado and not self.juego.es_terminal(self.estado):
             self._turno_ia()
 
     def _turno_ia(self):
-        if self.ia_thinking:
-            return
         self.ia_thinking = True
         self.lbl_turno.set("🤖 IA pensando...")
 
@@ -639,88 +610,24 @@ class TicTacToe3DUI:
         self.lbl_nodos_var.set(f"Nodos explorados: {ia.nodos_explorados:,}")
         self.lbl_podas_var.set(f"Podas: {ia.nodos_podados:,}")
         self._actualizar_ui()
-        self._verificar_fin()
+        self._verificar_fin_y_turno_ia()
 
-    def _pos_to_coords(self, pos):
-        z = pos // 16
-        rem = pos % 16
-        row = rem // 4
-        col = rem % 4
-        return z, row, col
-
-    def _coords_to_canvas(self, z, row, col):
-        """Convierte coordenadas lógicas 3D a posición isométrica en el canvas."""
-        cx = self.OX + (col - row) * (self.TILE_W / 2)
-        cy = self.OY + (col + row) * (self.TILE_H / 2) - z * self.LAYER_H
-        return cx, cy
-
-    def _canvas_to_cell(self, x, y):
-        """Detecta sobre qué celda se hizo clic (en 3D) iterando desde la vista frontal/superior."""
-        # Iterar en orden inverso de dibujado (desde frente-arriba hacia atrás-abajo)
-        for z in range(3, -1, -1):
-            for row in range(3, -1, -1):
-                for col in range(3, -1, -1):
-                    cx, cy = self._coords_to_canvas(z, row, col)
-                    # Comprobación de punto dentro del rombo isométrico
-                    dx = abs(x - cx)
-                    dy = abs(y - cy)
-                    if dx / (self.TILE_W / 2) + dy / (self.TILE_H / 2) <= 1.0:
-                        return (z, row, col)
-        return None
-
-    def _canvas_to_pos(self, x, y):
-        """Convierte posición canvas a índice 1D del tablero (o None)."""
-        cell = self._canvas_to_cell(x, y)
-        if cell:
-            z, row, col = cell
-            return row * 4 + z * 16 + col
-        return None
-
-    def _on_click(self, event):
-        if self.ia_thinking or self.juego.es_terminal(self.estado):
+    def _verificar_fin_y_turno_ia(self):
+        if self.juego.es_terminal(self.estado):
+            self._verificar_fin()
             return
-        if self.juego.jugador_actual(self.estado) != self.jugador_humano:
-            return
-
-        pos = self._canvas_to_pos(event.x, event.y)
-        if pos is None:
-            return
-
-        tablero, _ = self.estado
-        if tablero[pos] != 0:
-            return  # Celda ocupada
-
-        jugadas = self.juego.jugadas_legales(self.estado)
-        if pos in jugadas:
-            self.estado = self.juego.aplicar_jugada(self.estado, pos)
-            self._actualizar_ui()
-            if not self.juego.es_terminal(self.estado):
-                if self.juego.jugador_actual(self.estado) != self.jugador_humano:
-                    self.parent.after(200, self._turno_ia)
-            else:
-                self._verificar_fin()
-
-    def _on_hover(self, event):
-        cell = self._canvas_to_cell(event.x, event.y)
-        if cell != self.hover_cell:
-            self.hover_cell = cell
-            self._dibujar_tablero()
-
-    def _on_leave(self, event):
-        if self.hover_cell is not None:
-            self.hover_cell = None
-            self._dibujar_tablero()
+        if self.estado[1] != self.jugador_humano:
+            self.parent.after(300, self._turno_ia)
 
     def _verificar_fin(self):
         if self.juego.es_terminal(self.estado):
-            tablero, _ = self.estado
-            ganador = self.juego._comprobar_ganador(tablero)
-            if ganador == 1:
+            ganador = self.juego.utilidad(self.estado, 1)
+            if ganador == float('inf'):
                 msg = "🎉 ¡Gana el Jugador X!"
-            elif ganador == -1:
+            elif ganador == float('-inf'):
                 msg = "🎉 ¡Gana el Jugador O!"
             else:
-                msg = "🤝 ¡EMPATE! El tablero está lleno."
+                msg = "🤝 ¡EMPATE!"
             self.lbl_turno.set("Partida terminada")
             messagebox.showinfo("Fin de partida", msg)
 
@@ -733,111 +640,217 @@ class TicTacToe3DUI:
 
         if not self.juego.es_terminal(self.estado):
             if turn == self.jugador_humano:
-                sym = "❌" if turn == 1 else "⭕"
-                self.lbl_turno.set(f"🟢 Tu turno  ({sym})")
+                self.lbl_turno.set("🟢 Tu turno")
             else:
                 self.lbl_turno.set("🤖 IA pensando...")
 
         self._dibujar_tablero()
 
+    def transform_3d_to_2d(self, col, layer, row):
+        CX = 1.5 
+        x = (col - CX) * self.CELL_SIZE
+        z = (row - CX) * self.CELL_SIZE
+        y = (layer - CX) * self.LAYER_GAP
+
+        x1 = x * math.cos(self.yaw) - z * math.sin(self.yaw)
+        z1 = x * math.sin(self.yaw) + z * math.cos(self.yaw)
+        y1 = y
+        
+        y2 = y1 * math.cos(self.pitch) - z1 * math.sin(self.pitch)
+        z2 = y1 * math.sin(self.pitch) + z1 * math.cos(self.pitch)
+        
+        sx = self.OX + x1
+        sy = self.OY - y2  
+        depth = z2
+        
+        return sx, sy, depth
+
+    def get_cell_polygon(self, layer, row, col):
+        half = self.TILE_SIZE / 2
+        cs = self.CELL_SIZE
+        
+        pts_local = [
+            (col - half/cs, layer, row - half/cs),
+            (col + half/cs, layer, row - half/cs),
+            (col + half/cs, layer, row + half/cs),
+            (col - half/cs, layer, row + half/cs)
+        ]
+        
+        screen_pts = []
+        center_depth = 0
+        for px, py, pz in pts_local:
+            sx, sy, dep = self.transform_3d_to_2d(px, py, pz)
+            screen_pts.append((sx, sy))
+            center_depth += dep
+            
+        return screen_pts, center_depth / 4.0
+
+    def _point_in_poly(self, x, y, poly):
+        n = len(poly)
+        inside = False
+        p1x, p1y = poly[0]
+        for i in range(1, n + 1):
+            p2x, p2y = poly[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        return inside
+
+    def _canvas_to_cell(self, x, y):
+        for poly, layer, row, col in reversed(getattr(self, 'drawn_polygons', [])):
+            if self._point_in_poly(x, y, poly):
+                return (layer, row, col)
+        return None
+
+    def _on_press(self, event):
+        self.drag_start_x = event.x
+        self.drag_start_y = event.y
+        self.dragging = False
+
+    def _on_drag(self, event):
+        if not getattr(self, 'dragging', False):
+            if abs(event.x - self.drag_start_x) > 3 or abs(event.y - self.drag_start_y) > 3:
+                self.dragging = True
+            else:
+                return
+                
+        dx = event.x - self.drag_start_x
+        dy = event.y - self.drag_start_y
+        
+        self.yaw -= dx * 0.015
+        self.pitch += dy * 0.015
+        self.pitch = max(-math.pi/2 + 0.1, min(math.pi/2 - 0.1, self.pitch))
+
+        self.drag_start_x = event.x
+        self.drag_start_y = event.y
+        self._dibujar_tablero()
+
+    def _on_release(self, event):
+        if not getattr(self, 'dragging', False):
+            if self.ia_thinking:
+                return
+            cell = self._canvas_to_cell(event.x, event.y)
+            if cell:
+                layer, row, col = cell
+                pos = row * 4 + layer * 16 + col
+                jugadas = self.juego.jugadas_legales(self.estado)
+                if pos in jugadas and self.estado[1] == self.jugador_humano:
+                    self.estado = self.juego.aplicar_jugada(self.estado, pos)
+                    self._actualizar_ui()
+                    self._verificar_fin_y_turno_ia()
+        self.dragging = False
+
+    def _on_mouse_move(self, event):
+        if getattr(self, 'dragging', False):
+            return
+            
+        cell = self._canvas_to_cell(event.x, event.y)
+        if cell != getattr(self, 'hover_cell', None):
+            self.hover_cell = cell
+            self._dibujar_tablero()
+
     def _dibujar_tablero(self):
         self.canvas.delete("all")
+        self.drawn_polygons = []
+        
         tablero, turn = self.estado
-
         jugadas = set()
         if not self.juego.es_terminal(self.estado) and turn == self.jugador_humano:
             jugadas = set(self.juego.jugadas_legales(self.estado))
 
-        # 1. Dibujar pilares estructurales (efecto cubo de cristal)
-        # Esquinas: Atrás, Frente, Izquierda, Derecha
-        corners = [(0,0), (3,3), (3,0), (0,3)]
-        for r, c in corners:
-            xb, yb = self._coords_to_canvas(0, r, c)
-            xt, yt = self._coords_to_canvas(3, r, c)
-            self.canvas.create_line(xb, yb, xt, yt, fill="#2a3050", width=1.5, dash=(4, 4))
-            
-        # 2. Dibujar capas de abajo hacia arriba (z), luego de atrás hacia adelante (row, col)
-        for z in range(4):
-            # Etiqueta flotante por capa a la izquierda de la estructura
-            xl, yl = self._coords_to_canvas(z, 3, -1)
-            self.canvas.create_text(xl - 20, yl + 25, text=f"Z={z}", 
-                                    font=("Segoe UI", 11, "bold"), fill=TEXT_SECONDARY)
+        draw_queue = [] 
 
+        for c, r in [(0,0), (0,3), (3,0), (3,3)]:
+            _, _, d = self.transform_3d_to_2d(c, 1.5, r)
+            
+            def make_pillar(px=c, pz=r):
+                def draw():
+                    p1 = self.transform_3d_to_2d(px, -0.2, pz)
+                    p2 = self.transform_3d_to_2d(px, 3.2, pz)
+                    self.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill="#31395e", width=1.5, dash=(4,4))
+                return draw
+            draw_queue.append((d, make_pillar()))
+
+        for layer in range(4):
             for row in range(4):
                 for col in range(4):
-                    pos = row * 4 + z * 16 + col
-                    cx, cy = self._coords_to_canvas(z, row, col)
-
-                    tw = self.TILE_W / 2
-                    th = self.TILE_H / 2
+                    screen_pts, depth = self.get_cell_polygon(layer, row, col)
+                    pos = row * 4 + layer * 16 + col
                     
-                    # Geometría del rombo isométrico
-                    pts = [
-                        cx, cy - th,  # Arriba
-                        cx + tw, cy,  # Derecha
-                        cx, cy + th,  # Abajo
-                        cx - tw, cy   # Izquierda
-                    ]
+                    def make_cell(l=layer, r=row, c=col, p=pos, spts=screen_pts):
+                        def draw():
+                            self._draw_cell_element(l, r, c, p, spts, jugadas, tablero)
+                        return draw
+                    draw_queue.append((depth, make_cell()))
 
-                    is_hover = (self.hover_cell == (z, row, col))
-                    is_valid = (pos in jugadas)
+        draw_queue.sort(key=lambda item: item[0])
+        for depth, draw_function in draw_queue:
+            draw_function()
 
-                    # Colores "glassmorphism"
-                    if is_hover and is_valid:
-                        fill_col = "#2a3460"
-                        outline_col = "#43e97b"
-                    elif is_hover:
-                        fill_col = "#232842"
-                        outline_col = "#ff6584"
-                    elif is_valid:
-                        fill_col = "#1e2c40"
-                        outline_col = "#2d3255"
-                    else:
-                        fill_col = "#111522" if (row+col)%2==0 else "#161b2a"
-                        outline_col = "#202538"
+        self.canvas.create_text(370, 620, text=f"Yaw: {math.degrees(self.yaw):.0f}° | Pitch: {math.degrees(self.pitch):.0f}°", 
+                                fill="#4a5070", font=("Consolas", 8))
 
-                    # Dibujar rombo
-                    self.canvas.create_polygon(pts, fill=fill_col, outline=outline_col, width=1.5)
+    def _draw_cell_element(self, layer, row, col, pos, pts, jugadas, tablero):
+        is_hover = (self.hover_cell == (layer, row, col))
+        is_valid = (pos in jugadas)
 
-                    # Simular indicador de jugada válida
-                    if is_valid and not is_hover:
-                        self.canvas.create_oval(cx-3, cy-3, cx+3, cy+3, fill="#328a4c", outline="")
+        if is_hover and is_valid:
+            fill_col, outline_col = "#2a3460", "#43e97b"
+        elif is_hover:
+            fill_col, outline_col = "#232842", "#ff6584"
+        elif is_valid:
+            fill_col, outline_col = "#1e2c40", "#2d3255"
+        else:
+            fill_col = "#111522" if (row+col)%2==0 else "#161b2a"
+            outline_col = "#202538"
 
-                    # Dibujar fichas
-                    val = tablero[pos]
-                    if val == 1:
-                        self._draw_x(cx, cy)
-                    elif val == -1:
-                        self._draw_o(cx, cy)
-
-    def _draw_x(self, cx, cy):
-        dw = self.TILE_W / 4.2
-        dh = self.TILE_H / 4.2
-        # Líneas paralelas a los ejes de la cuadrícula
-        x1, y1 = cx - dw, cy - dh
-        x2, y2 = cx + dw, cy + dh
+        flat_pts = [c for p in pts for c in p]
+        self.canvas.create_polygon(flat_pts, fill=fill_col, outline=outline_col, width=1.5)
         
-        x3, y3 = cx + dw, cy - dh
-        x4, y4 = cx - dw, cy + dh
+        self.drawn_polygons.append((pts, layer, row, col))
 
-        # Volúmen (Shadow 3D)
-        self.canvas.create_line(x1+2, y1+2, x2+2, y2+2, fill="#200000", width=4, capstyle="round")
-        self.canvas.create_line(x3+2, y3+2, x4+2, y4+2, fill="#200000", width=4, capstyle="round")
+        if is_valid and not is_hover:
+            cx, cy, _ = self.transform_3d_to_2d(col, layer, row)
+            self.canvas.create_oval(cx-3, cy-3, cx+3, cy+3, fill="#328a4c", outline="")
+
+        val = tablero[pos]
+        if val == 1:
+            self._draw_x(col, layer, row)
+        elif val == -1:
+            self._draw_o(col, layer, row)
+
+    def _draw_x(self, px, py, pz):
+        pad = 0.35 * self.TILE_SIZE / self.CELL_SIZE
         
-        # Color Principal de la X
-        self.canvas.create_line(x1, y1, x2, y2, fill="#ff6b6b", width=3, capstyle="round")
-        self.canvas.create_line(x3, y3, x4, y4, fill="#ff6b6b", width=3, capstyle="round")
+        p1 = self.transform_3d_to_2d(px - pad, py, pz - pad)
+        p2 = self.transform_3d_to_2d(px + pad, py, pz + pad)
+        p3 = self.transform_3d_to_2d(px + pad, py, pz - pad)
+        p4 = self.transform_3d_to_2d(px - pad, py, pz + pad)
+        
+        self.canvas.create_line(p1[0]+2, p1[1]+2, p2[0]+2, p2[1]+2, fill="#200000", width=4, capstyle="round")
+        self.canvas.create_line(p3[0]+2, p3[1]+2, p4[0]+2, p4[1]+2, fill="#200000", width=4, capstyle="round")
+        
+        self.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill="#ff6b6b", width=3, capstyle="round")
+        self.canvas.create_line(p3[0], p3[1], p4[0], p4[1], fill="#ff6b6b", width=3, capstyle="round")
 
-    def _draw_o(self, cx, cy):
-        dw = self.TILE_W / 3.2
-        dh = self.TILE_H / 3.2
-        # Volúmen (Shadow 3D)
-        self.canvas.create_oval(cx - dw + 2, cy - dh + 2, cx + dw + 2, cy + dh + 2, outline="#001a33", width=4)
-        # O principal
-        self.canvas.create_oval(cx - dw, cy - dh, cx + dw, cy + dh, outline="#6bc5ff", width=3)
+    def _draw_o(self, px, py, pz):
+        r = 0.35 * self.TILE_SIZE / self.CELL_SIZE
+        pts = []
+        for i in range(16):
+            angle = i * math.pi * 2 / 16
+            dx = math.cos(angle) * r
+            dz = math.sin(angle) * r
+            sx, sy, _ = self.transform_3d_to_2d(px + dx, py, pz + dz)
+            pts.extend([sx, sy])
+            
+        self.canvas.create_polygon(pts, outline="#001a33", width=5, fill="", smooth=True)
+        self.canvas.create_polygon([p-1 for p in pts], outline="#6bc5ff", width=3, fill="", smooth=True)
 
-
-# ─── Punto de entrada ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app = App()
     app.mainloop()
