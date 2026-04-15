@@ -25,13 +25,14 @@ Incluye dos juegos clásicos: **Othello** y **TicTacToe 3D (4×4×4)**, con inte
 - Exploración en profundidad configurable
 - Poda alfa-beta para reducir el espacio de búsqueda
 - Estadísticas de nodos explorados y podas realizadas
+- `modo="agresivo"` con desempates ofensivos y preferencia por victorias más rápidas
 
 ### Heurísticas (`heuristicas/`)
 
 | Juego | Características evaluadas |
 |---|---|
-| **Othello** | Diferencia de fichas, movilidad, control de esquinas, paridad |
-| **TTT 3D** | Líneas abiertas (1, 2, 3 fichas), control del centro 2×2×2 |
+| **Othello** | Material por fase, movilidad real de ambos, frontera, esquinas y riesgo X/C, paridad |
+| **TTT 3D** | Líneas abiertas, amenazas inmediatas, forks, iniciativa y control de centro dinámico |
 
 ### Optimización Genética (`optimizacion/genetico.py`)
 - Evolución de los pesos de las funciones heurísticas
@@ -96,6 +97,7 @@ Practica_ia1_busquedas/
 ### Requisitos
 - Python 3.8+
 - Tkinter (incluido en la instalación estándar de Python)
+- Sin dependencias externas adicionales
 
 ### Interfaz gráfica (recomendado)
 ```bash
@@ -121,6 +123,36 @@ Agente (ABC)
   └── AgenteMinimaxAlfaBeta
         ├── evaluador: get_evaluador_othello(pesos)
         └── evaluador: get_evaluador_ttt3d(pesos)
+```
+
+---
+
+## 🌐 Servidor de partidas por ID
+
+Se agregó un servidor TCP simple para emparejar jugadores por ID y reenviar mensajes de partida.
+
+### Archivos
+- `red/servidor_partidas.py` -> servidor de matchmaking por ID
+- `red/cliente_partida.py` -> cliente CLI para conexión y chat/relay
+- `red/test_servidor_local.py` -> smoke test local del protocolo
+
+### Levantar servidor
+
+```bash
+python red/servidor_partidas.py --host 127.0.0.1 --port 5050
+```
+
+### Conectar dos clientes (dos terminales)
+
+```bash
+python red/cliente_partida.py --id alice --opponent bob --game ttt3d
+python red/cliente_partida.py --id bob --opponent alice --game ttt3d
+```
+
+### Probar protocolo rápido
+
+```bash
+python red/test_servidor_local.py
 ```
 
 ---

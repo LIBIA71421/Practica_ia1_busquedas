@@ -18,6 +18,7 @@ from juegos.tictactoe3d import JuegoTicTacToe3D
 from algoritmos.minimax import AgenteMinimaxAlfaBeta
 from heuristicas.othello_heuristics import get_evaluador_othello
 from heuristicas.ttt3d_heuristics import get_evaluador_ttt3d
+from config.perfiles_ia import obtener_perfil
 
 # ─── Paleta de Colores ──────────────────────────────────────────────────────
 BG_DARK     = "#0d0f14"
@@ -40,8 +41,12 @@ COL_IA      = "#6c63ff"     # IA highlight
 VALID_COL   = "#43e97b"     # Movimiento válido
 
 # ─── Pesos por defecto ───────────────────────────────────────────────────────
-PESOS_OTHELLO_DEFAULT = (0.40401033647179574, 0.9562255176191674,-0.5810995767711737,-0.5608392529830415)
-PESOS_TTT3D_DEFAULT   = (0.7533482793088735,-0.7018771573432969, 0.8615901366527485, 0.8437413291129652)
+MODO_IA_DEFAULT = "agresivo"
+_PERFIL_IA = obtener_perfil(MODO_IA_DEFAULT)
+# Orden Othello: (fichas, movilidad+frontera, esquinas+riesgo, paridad/tempo)
+PESOS_OTHELLO_DEFAULT = _PERFIL_IA["othello"]["pesos"]
+# Orden TTT3D: (lineas_1, lineas_2, lineas_3, centro)
+PESOS_TTT3D_DEFAULT   = _PERFIL_IA["ttt3d"]["pesos"]
 
 
 class App(tk.Tk):
@@ -286,11 +291,13 @@ class OthelloUI:
             self.parent.after(400, self._turno_ia)
 
     def _get_ia(self):
-        pesos = PESOS_OTHELLO_DEFAULT
-        evaluador = get_evaluador_othello(pesos)
+        cfg = _PERFIL_IA["othello"]
+        evaluador = get_evaluador_othello(cfg["pesos"])
+        profundidad = min(6, self.profundidad.get() + int(cfg.get("bonus_profundidad", 0)))
         return AgenteMinimaxAlfaBeta(
-            profundidad_maxima=self.profundidad.get(),
-            evaluador=evaluador
+            profundidad_maxima=profundidad,
+            evaluador=evaluador,
+            modo=cfg.get("modo_minimax", "balanceado"),
         )
 
     def forzar_ia(self):
@@ -583,9 +590,14 @@ class TicTacToe3DUI:
             self.parent.after(400, self._turno_ia)
 
     def _get_ia(self):
-        pesos = PESOS_TTT3D_DEFAULT
-        evaluador = get_evaluador_ttt3d(pesos)
-        return AgenteMinimaxAlfaBeta(profundidad_maxima=self.profundidad.get(), evaluador=evaluador)
+        cfg = _PERFIL_IA["ttt3d"]
+        evaluador = get_evaluador_ttt3d(cfg["pesos"])
+        profundidad = min(4, self.profundidad.get() + int(cfg.get("bonus_profundidad", 0)))
+        return AgenteMinimaxAlfaBeta(
+            profundidad_maxima=profundidad,
+            evaluador=evaluador,
+            modo=cfg.get("modo_minimax", "balanceado"),
+        )
 
     def forzar_ia(self):
         if not self.ia_thinking and self.estado and not self.juego.es_terminal(self.estado):
